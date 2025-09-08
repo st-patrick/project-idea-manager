@@ -1,0 +1,22 @@
+{
+	"name": "Projects",
+	"short_name": "Projects",
+	"start_url":"index.html",	
+	"display_override": [
+		"window-controls-overlay"
+	],
+	"display": "standalone",
+	"background_color":"#ffffff",
+	"theme_color":"white",
+	"orientation": "portrait",
+	"scope": ".",
+	"description":"project ideas management",
+	"icons":[
+		{
+			"src":"./logo.png",
+			"sizes":"1024x1024",
+			"type":"image/png",
+			"purpose": "any"
+		}		
+	]
+}
