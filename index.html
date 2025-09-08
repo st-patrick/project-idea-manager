@@ -61,7 +61,7 @@
       <span class="status" id="status">ready</span>
       <span class="tag">space: <span id="count">0</span> ideas</span>
       <span class="tag">mode: <span id="mode">remote</span></span>
-      <a class="tip" href="https://www.paypal.com/paypalme/PatrickReinbold" target="_blank" rel="noopener noreferrer" title="tip jar">♥ tip jar</a>
+      <a class="tip" href="https://www.paypal.com/paypalme/PatrickReinbold" target="_blank" rel="noopener noreferrer" title="tip jar">&#128151; tip jar</a>
     </div>
     <div class="right">
       <button id="save" class="accent">Save</button>
@@ -131,14 +131,14 @@
         </div>
       </div>
       <div class="footer">
-        <div>id: <code id="rid">—</code> · <span id="archivedTag" class="tag" style="display:none">archived</span></div>
+        <div>id: <code id="rid"></code> <span id="archivedTag" class="tag" style="display:none; margin-left: 10px">archived</span></div>
       </div>
     </main>
   </div>
 
   <header>
     <div class="right">
-      <input id="endpoint" size="38" placeholder="npoint endpoint (e.g. https://api.npoint.io/cd1184765c36929f0b34)" />
+      <input id="endpoint" size="38" placeholder="npoint endpoint (e.g. https://api.npoint.io/123456789sdf3452)" />
       <input id="apikey" size="18" placeholder="X-Api-Key (optional for write)" />
       <button id="saveCfg" class="pill">Save config</button>
       <button id="load" class="pill">Load</button>
@@ -187,7 +187,7 @@
   function normalizeIdea(p){
     return {
       id: p.id || uid(),
-      title: (p.title||'').trim(),
+      title: (p.title||''),
       category: (p.category||'').trim() || null,
       pitch: p.pitch||null,
       notes: p.notes||null,
@@ -201,6 +201,21 @@
       archived: !!p.archived,
       score: Number.isFinite(p.score)? p.score : 0
     };
+  }
+
+  function sanitized(ideas){
+    return ideas.map(it => ({
+      ...it,
+      title: (it.title ?? '').trim(),               // trim here
+      category: (it.category ?? '').trim() || null,
+      pitch: (it.pitch ?? '').trim() || null,
+      notes: (it.notes ?? '').trim() || null,
+      problem: (it.problem ?? '').trim() || null,
+      monetization: (it.monetization ?? '').trim() || null,
+      link: (it.link ?? '').trim() || null,
+      image: (it.image ?? '').trim() || null,
+      inflection_point: (it.inflection_point ?? '').trim() || null
+    }));
   }
 
   function renderList(){
@@ -312,7 +327,7 @@
   async function saveToNpoint(){
     try{
       setStatus('saving…');
-      const body = JSON.stringify({ ideas: data.ideas }, null, 2);
+      const body = JSON.stringify(data);
       const headers = { 'Content-Type':'application/json' };
       if(cfg.apikey) headers['Authorization'] = "Bearer " + cfg.apikey;
       const res = await fetch(cfg.endpoint, { method:'POST', headers, body });
@@ -337,6 +352,10 @@
   }
 
   async function saveData(){
+    data = { ideas: sanitized(data.ideas) }; // sanitize before save
+    if(!data.ideas.length){ setStatus('nothing to save'); return; }
+    if(!dirty.size){ setStatus('no changes to save'); return; }
+
     const ep = (cfg.endpoint||'').trim();
     if(ep){
       const ok = await saveToNpoint();
