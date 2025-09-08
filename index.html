@@ -6,9 +6,11 @@
   <title>Idea Helper</title>
   <style>
     :root { --bg:#0b0b0f; --fg:#f2f2f7; --muted:#a1a1aa; --card:#14141c; --accent:#7c93ff; --ok:#46d39a; --warn:#ffb84d; --bad:#ff6b6b; }
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial}
-    header{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #222;position:sticky;top:0;background:linear-gradient(180deg, rgba(11,11,15,.97), rgba(11,11,15,.94));backdrop-filter:saturate(140%) blur(4px);z-index:3}
-    header .left, header .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial}
+    header{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #222}
+    header .left, header .right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
     input, textarea, select{background:#0f0f16;color:var(--fg);border:1px solid #26263a;border-radius:12px;padding:12px 14px;outline:none;width:100%;transition:border-color .15s, box-shadow .15s;box-shadow:inset 0 0 0 1px #131320}
     input::placeholder, textarea::placeholder{color:var(--muted)}
     input:focus, textarea:focus, select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,147,255,.15), inset 0 0 0 1px #20203a}
@@ -20,17 +22,18 @@
     .ok{background:var(--ok);color:#052014;border-color:transparent}
     .warn{background:var(--warn);color:#2a1b00;border-color:transparent}
     .bad{background:var(--bad);color:#2a0000;border-color:transparent}
-    .app{display:grid;grid-template-columns:360px 1fr;gap:14px;padding:12px}
-    @media (max-width: 1000px){ .app{grid-template-columns:1fr} .sidebar{order:2} }
+    .app{display:grid;grid-template-columns:minmax(0, 320px) minmax(0, 1fr);gap:14px;padding:12px;max-width:1400px;margin:0 auto}
+    @media (max-width: 960px){ .app{grid-template-columns:1fr} .sidebar{order:2}}
     .card{background:var(--card);border:1px solid #1e1e29;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px #141422}
-    .sidebar{display:flex;flex-direction:column;gap:12px}
+    .sidebar{display:flex;flex-direction:column;gap:12px;min-width:0}
     .list{max-height:65vh;overflow:auto}
-    .row{padding:10px 12px;border-bottom:1px solid #191926;display:flex;gap:8px;align-items:center}
+    .row{padding:10px 12px;border-bottom:1px solid #191926;display:flex;gap:8px;align-items:center;min-width:0}
     .row:hover{background:#11111a}
-    .row .title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .row .title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
     .row small{color:var(--muted)}
     .row.active{background:#0e1120;border-left:3px solid var(--accent)}
-    .toolbar{display:flex;gap:10px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid #191926;position:sticky;top:0;background:linear-gradient(180deg, rgba(11,11,15,.95), rgba(11,11,15,.92));backdrop-filter:saturate(140%) blur(4px);z-index:2}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid #191926}
+    .toolbar .spacer{flex:1}
     .main{padding:20px;max-width:1200px;margin:0 auto}
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;align-items:start}
     .grid textarea{min-height:140px;resize:vertical}
@@ -50,7 +53,8 @@
       <strong>Idea Helper</strong>
       <span class="status" id="status">ready</span>
       <span class="tag">space: <span id="count">0</span> ideas</span>
-      <span class="tag">unsaved: <span id="unsaved">0</span></span>
+      $1
+      <span class="tag">mode: <span id="mode">remote</span></span>
     </div>
     <div class="right">
       <input id="endpoint" size="38" placeholder="npoint endpoint (e.g. https://api.npoint.io/cd1184765c36929f0b34)" />
@@ -137,34 +141,40 @@
   // ---- utilities ----
   const $ = sel => document.querySelector(sel);
   const $$ = sel => Array.from(document.querySelectorAll(sel));
-  const uid = (s) => (crypto && crypto.randomUUID ? crypto.randomUUID().slice(0,8) : Math.random().toString(36).slice(2,10));
+  const uid = () => (crypto && crypto.randomUUID ? crypto.randomUUID().slice(0,8) : Math.random().toString(36).slice(2,10));
 
+  // config
   const cfg = {
     endpoint: localStorage.getItem('ih.endpoint') || 'https://api.npoint.io/cd1184765c36929f0b34',
     apikey: localStorage.getItem('ih.apikey') || ''
   };
 
+  const STORAGE_KEY='ih.local.ideas.v1';
+  function setMode(m){ try{ localStorage.setItem('ih.mode', m); }catch(e){} const mt=$('#mode'); if(mt) mt.textContent=m; }
+  function getMode(){ try{ return localStorage.getItem('ih.mode')||'remote'; }catch(e){ return 'remote'; } }
+
+  // elements (guarded for missing settings section)
   const els = {
     endpoint: $('#endpoint'), apikey: $('#apikey'), saveCfg: $('#saveCfg'),
     load: $('#load'), save: $('#save'), list: $('#list'), q: $('#q'),
     catFilter: $('#catFilter'), shuffle: $('#shuffle'), pick: $('#pick'),
     prev: $('#prev'), next: $('#next'), newBtn: $('#new'), dup: $('#duplicate'),
     archive: $('#archive'), del: $('#delete'), file: $('#file'), importBtn: $('#importBtn'), exportBtn: $('#exportBtn'),
-    // form fields
     rid: $('#rid'), title: $('#title'), category: $('#category'), link: $('#link'), infl: $('#infl'),
     pitch: $('#pitch'), notes: $('#notes'), problem: $('#problem'), money: $('#money'), image: $('#image'),
-    status: $('#status'), count: $('#count'), unsaved: $('#unsaved'), archivedTag: $('#archivedTag'), openLink: $('#openLink')
+    status: $('#status'), count: $('#count'), unsaved: $('#unsaved'), archivedTag: $('#archivedTag'), openLink: $('#openLink'), mode: $('#mode')
   };
 
-  els.endpoint.value = cfg.endpoint; els.apikey.value = cfg.apikey;
+  if(els.endpoint){ els.endpoint.value = cfg.endpoint; }
+  if(els.apikey){ els.apikey.value = cfg.apikey; }
 
   let data = { ideas: [] };
-  let idx = -1; // current index in filtered view
-  let filteredIdxs = []; // mapping to data.ideas indexes
+  let idx = -1;
+  let filteredIdxs = [];
   let dirty = new Set();
 
-  function setStatus(s){ els.status.textContent = s; }
-  function refreshCounts(){ els.count.textContent = data.ideas.length; els.unsaved.textContent = dirty.size; }
+  function setStatus(s){ if(els.status) els.status.textContent = s; }
+  function refreshCounts(){ if(els.count) els.count.textContent = data.ideas.length; if(els.unsaved) els.unsaved.textContent = dirty.size; }
 
   function normalizeIdea(p){
     return {
@@ -186,17 +196,19 @@
   }
 
   function renderList(){
-    const q = els.q.value.toLowerCase().trim();
-    const cat = els.catFilter.value;
+    const q = (els.q && els.q.value || '').toLowerCase().trim();
+    const cat = els.catFilter ? els.catFilter.value : '';
     const nodes = [];
     filteredIdxs = [];
 
     // categories
-    const cats = new Set(['']);
-    data.ideas.forEach(it => { if(it.category) cats.add(it.category); });
-    const prevSel = els.catFilter.value; els.catFilter.innerHTML = ''; cats.forEach(c=>{
-      const opt = document.createElement('option'); opt.value = c; opt.textContent = c || 'all categories'; els.catFilter.appendChild(opt);
-    }); els.catFilter.value = prevSel;
+    if(els.catFilter){
+      const cats = new Set(['']);
+      data.ideas.forEach(it => { if(it.category) cats.add(it.category); });
+      const prevSel = els.catFilter.value; els.catFilter.innerHTML = ''; cats.forEach(c=>{
+        const opt = document.createElement('option'); opt.value = c; opt.textContent = c || 'all categories'; els.catFilter.appendChild(opt);
+      }); els.catFilter.value = prevSel;
+    }
 
     data.ideas.forEach((it, i) => {
       if(cat && it.category !== cat) return;
@@ -208,7 +220,7 @@
       row.onclick = () => { idx = Number(row.dataset.i); loadCurrent(); };
       nodes.push(row);
     });
-    els.list.replaceChildren(...nodes);
+    if(els.list){ els.list.replaceChildren(...nodes); }
     if(idx < 0 && filteredIdxs.length){ idx = 0; }
     if(filteredIdxs.length && idx >= filteredIdxs.length){ idx = filteredIdxs.length-1; }
     loadCurrent(false);
@@ -218,33 +230,33 @@
     if(idx < 0 || !filteredIdxs.length){ clearForm(); return; }
     const realIndex = filteredIdxs[idx];
     const it = data.ideas[realIndex];
-    els.rid.textContent = it.id;
-    els.title.value = it.title||'';
-    els.category.value = it.category||'';
-    els.link.value = it.link||'';
-    els.infl.value = it.inflection_point||'';
-    els.pitch.value = it.pitch||'';
-    els.notes.value = it.notes||'';
-    els.problem.value = it.problem||'';
-    els.money.value = it.monetization||'';
-    els.image.value = it.image||'';
-    els.archivedTag.style.display = it.archived ? 'inline-block' : 'none';
-    els.openLink.href = it.link || '#';
+    if(els.rid) els.rid.textContent = it.id;
+    if(els.title) els.title.value = it.title||'';
+    if(els.category) els.category.value = it.category||'';
+    if(els.link) els.link.value = it.link||'';
+    if(els.infl) els.infl.value = it.inflection_point||'';
+    if(els.pitch) els.pitch.value = it.pitch||'';
+    if(els.notes) els.notes.value = it.notes||'';
+    if(els.problem) els.problem.value = it.problem||'';
+    if(els.money) els.money.value = it.monetization||'';
+    if(els.image) els.image.value = it.image||'';
+    if(els.archivedTag) els.archivedTag.style.display = it.archived ? 'inline-block' : 'none';
+    if(els.openLink) els.openLink.href = it.link || '#';
     $$('.row').forEach((n,j)=>{ n.classList.toggle('active', j===idx); if(j===idx && scrollIntoView) n.scrollIntoView({block:'nearest'}); });
   }
 
   function readForm(){
     return normalizeIdea({
-      id: els.rid.textContent==='—'? undefined : els.rid.textContent,
-      title: els.title.value,
-      category: els.category.value,
-      link: els.link.value,
-      inflection_point: els.infl.value,
-      pitch: els.pitch.value,
-      notes: els.notes.value,
-      problem: els.problem.value,
-      monetization: els.money.value,
-      image: els.image.value,
+      id: els.rid && els.rid.textContent==='—' ? undefined : (els.rid ? els.rid.textContent : undefined),
+      title: els.title ? els.title.value : '',
+      category: els.category ? els.category.value : '',
+      link: els.link ? els.link.value : '',
+      inflection_point: els.infl ? els.infl.value : '',
+      pitch: els.pitch ? els.pitch.value : '',
+      notes: els.notes ? els.notes.value : '',
+      problem: els.problem ? els.problem.value : '',
+      monetization: els.money ? els.money.value : '',
+      image: els.image ? els.image.value : '',
       archived: (data.ideas[filteredIdxs[idx]]||{}).archived || false,
       createdAt: (data.ideas[filteredIdxs[idx]]||{}).createdAt
     });
@@ -259,15 +271,15 @@
     renderList();
   }
 
-  function clearForm(){ els.rid.textContent='—'; ['title','category','link','infl','pitch','notes','problem','money','image'].forEach(k=>els[k].value=''); els.archivedTag.style.display='none'; }
+  function clearForm(){ if(els.rid) els.rid.textContent='—'; ['title','category','link','infl','pitch','notes','problem','money','image'].forEach(k=>{ if(els[k]) els[k].value=''; }); if(els.archivedTag) els.archivedTag.style.display='none'; }
 
   function newIdea(){
     const it = normalizeIdea({ title: '', category: '', notes: '' });
-    data.ideas.unshift(it); // add to top
+    data.ideas.unshift(it);
     idx = 0; filteredIdxs = [0, ...filteredIdxs.map(i=>i+1)];
     renderList();
     dirty.add(it.id); refreshCounts();
-    els.title.focus();
+    if(els.title) els.title.focus();
   }
 
   function duplicateIdea(){ if(idx<0) return; const realIndex = filteredIdxs[idx]; const it = data.ideas[realIndex]; const copy = normalizeIdea({...it, id: undefined, title: it.title+" (copy)"}); data.ideas.splice(realIndex+1,0,copy); renderList(); dirty.add(copy.id); refreshCounts(); }
@@ -284,7 +296,10 @@
       const json = await res.json();
       data = { ideas: Array.isArray(json.ideas) ? json.ideas.map(normalizeIdea) : Array.isArray(json) ? json.map(normalizeIdea) : [] };
       dirty.clear(); refreshCounts(); idx = -1; renderList(); setStatus('loaded');
-    }catch(e){ console.error(e); setStatus('load failed; starting with empty space'); data = { ideas: [] }; renderList(); }
+      return true;
+    }catch(e){ console.error(e); setStatus('load failed; using local');
+      return false;
+    }
   }
 
   async function saveToNpoint(){
@@ -292,52 +307,72 @@
       setStatus('saving…');
       const body = JSON.stringify({ ideas: data.ideas }, null, 2);
       const headers = { 'Content-Type':'application/json' };
-      if(cfg.apikey) headers['X-Api-Key'] = cfg.apikey; // npoint bin Secret
-      const res = await fetch(cfg.endpoint, { method:'PUT', headers, body });
+      if(cfg.apikey) headers['X-Api-Key'] = cfg.apikey;
+      const res = await fetch(cfg.endpoint, { method:'POST', headers, body });
       if(!res.ok){ throw new Error('HTTP '+res.status); }
       dirty.clear(); refreshCounts(); setStatus('saved ✓');
-    }catch(e){ console.error(e); setStatus('save failed: '+e.message); alert('Save failed. Did you set the correct endpoint and X-Api-Key from your npoint bin?'); }
+      return true;
+    }catch(e){ console.error(e); setStatus('save failed; saved locally');
+      return false;
+    }
+  }
+
+  // hybrid persistence wrappers
+  async function loadData(){
+    const ep = (cfg.endpoint||'').trim();
+    if(ep){
+      const ok = await loadFromNpoint();
+      if(ok){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){} setMode('remote'); return; }
+    }
+    // local fallback
+    try{ const raw = localStorage.getItem(STORAGE_KEY); data = raw ? JSON.parse(raw) : { ideas: [] }; if(!data || !Array.isArray(data.ideas)) data = { ideas: [] }; }catch(e){ data = { ideas: [] }; }
+    dirty.clear(); refreshCounts(); idx=-1; renderList(); setStatus('loaded (local)'); setMode('local');
+  }
+
+  async function saveData(){
+    const ep = (cfg.endpoint||'').trim();
+    if(ep){
+      const ok = await saveToNpoint();
+      if(ok){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){} setMode('remote'); return; }
+    }
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){}
+    setStatus('saved locally ✓'); setMode('local');
   }
 
   function exportJSON(){ const blob = new Blob([JSON.stringify({ideas:data.ideas}, null, 2)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='ideas.json'; a.click(); URL.revokeObjectURL(a.href); }
   function importJSON(file){ const r=new FileReader(); r.onload=() => { try{ const j=JSON.parse(r.result); const arr = Array.isArray(j.ideas)? j.ideas : Array.isArray(j)? j : []; arr.forEach(x=>data.ideas.push(normalizeIdea(x))); renderList(); setStatus('imported'); refreshCounts(); }catch(e){ alert('Invalid JSON'); } }; r.readAsText(file); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
 
-  function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+  // wire up
+  if(els.saveCfg){ els.saveCfg.onclick = ()=>{ cfg.endpoint = els.endpoint ? els.endpoint.value.trim() : cfg.endpoint; cfg.apikey = els.apikey ? els.apikey.value.trim() : cfg.apikey; try{ localStorage.setItem('ih.endpoint', cfg.endpoint); localStorage.setItem('ih.apikey', cfg.apikey);}catch(e){} setStatus('config saved'); }; }
+  if(els.load){ els.load.onclick = loadData; }
+  if(els.save){ els.save.onclick = saveData; }
+  if(els.shuffle){ els.shuffle.onclick = shuffle; }
+  if(els.pick){ els.pick.onclick = shuffle; }
+  if(els.prev){ els.prev.onclick = ()=>{ if(idx>0){ idx--; loadCurrent(); } }; }
+  if(els.next){ els.next.onclick = ()=>{ if(idx<filteredIdxs.length-1){ idx++; loadCurrent(); } }; }
+  if(els.newBtn){ els.newBtn.onclick = newIdea; }
+  if(els.dup){ els.dup.onclick = duplicateIdea; }
+  if(els.archive){ els.archive.onclick = archiveIdea; }
+  if(els.del){ els.del.onclick = deleteIdea; }
+  if(els.exportBtn){ els.exportBtn.onclick = exportJSON; }
+  if(els.importBtn){ els.importBtn.onclick = ()=>{ if(els.file && els.file.files[0]) importJSON(els.file.files[0]); else alert('Choose a JSON file to import first.'); }; }
 
-  // ---- wire up ----
-  els.saveCfg.onclick = ()=>{ cfg.endpoint = els.endpoint.value.trim(); cfg.apikey = els.apikey.value.trim(); localStorage.setItem('ih.endpoint', cfg.endpoint); localStorage.setItem('ih.apikey', cfg.apikey); setStatus('config saved'); };
-  els.load.onclick = loadFromNpoint;
-  els.save.onclick = saveToNpoint;
-  els.shuffle.onclick = shuffle;
-  els.pick.onclick = shuffle;
-  els.prev.onclick = ()=>{ if(idx>0){ idx--; loadCurrent(); } };
-  els.next.onclick = ()=>{ if(idx<filteredIdxs.length-1){ idx++; loadCurrent(); } };
-  els.newBtn.onclick = newIdea;
-  els.dup.onclick = duplicateIdea;
-  els.archive.onclick = archiveIdea;
-  els.del.onclick = deleteIdea;
-  els.exportBtn.onclick = exportJSON;
-  els.importBtn.onclick = ()=>{ if(els.file.files[0]) importJSON(els.file.files[0]); else alert('Choose a JSON file to import first.'); };
-
-  // form change listeners
   ['title','category','link','infl','pitch','notes','problem','money','image'].forEach(k=>{
-    els[k].addEventListener('input', ()=>{ updateCurrent(); });
+    if(els[k]) els[k].addEventListener('input', updateCurrent);
   });
+  if(els.q){ els.q.addEventListener('input', renderList); }
+  if(els.catFilter){ els.catFilter.addEventListener('change', ()=>{ idx=0; renderList(); }); }
 
-  // list filters
-  els.q.addEventListener('input', renderList);
-  els.catFilter.addEventListener('change', ()=>{ idx=0; renderList(); });
-
-  // keyboard shortcuts
   window.addEventListener('keydown', (e)=>{
-    if(e.code==='Space' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){ e.preventDefault(); shuffle(); }
-    if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveToNpoint(); }
-    if(!e.metaKey && !e.ctrlKey && e.key.toLowerCase()==='n' && document.activeElement.tagName!=='INPUT' && document.activeElement.tagName!=='TEXTAREA'){ e.preventDefault(); newIdea(); }
+    if(e.code==='Space' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){ e.preventDefault(); shuffle(); }
+    if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveData(); }
+    if(!e.metaKey && !e.ctrlKey && e.key.toLowerCase()==='n' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){ e.preventDefault(); newIdea(); }
   });
 
   // initial
   refreshCounts(); renderList(); setStatus('ready');
-  loadFromNpoint();
+  loadData();
   </script>
 </body>
 </html>
