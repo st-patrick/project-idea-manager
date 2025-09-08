@@ -1,8 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+	<link rel="icon" type="image/x-icon" href="logo.png">
+	<link rel="manifest" href="/app.webmanifest">
+ 
+  <meta name="theme-color" content="black">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="viewport" content="minimal-ui">
+	<meta name="viewport" content="initial-scale=1"> 
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"> 
+	<meta name="mobile-web-app-capable" content="yes">
   <title>Idea Helper</title>
   <style>
     :root { --bg:#0b0b0f; --fg:#f2f2f7; --muted:#a1a1aa; --card:#14141c; --accent:#7c93ff; --ok:#46d39a; --warn:#ffb84d; --bad:#ff6b6b; }
@@ -53,15 +60,12 @@
       <strong>Idea Helper</strong>
       <span class="status" id="status">ready</span>
       <span class="tag">space: <span id="count">0</span> ideas</span>
-      $1
       <span class="tag">mode: <span id="mode">remote</span></span>
+      <a class="tip" href="https://www.paypal.com/paypalme/PatrickReinbold" target="_blank" rel="noopener noreferrer" title="tip jar">♥ tip jar</a>
     </div>
     <div class="right">
-      <input id="endpoint" size="38" placeholder="npoint endpoint (e.g. https://api.npoint.io/cd1184765c36929f0b34)" />
-      <input id="apikey" size="18" placeholder="X-Api-Key (optional for write)" />
-      <button id="saveCfg" class="pill">Save config</button>
-      <button id="load" class="pill">Load</button>
-      <button id="save" class="accent">Save to npoint ⌘S</button>
+      <button id="save" class="accent">Save</button>
+      <span class="tag">unsaved: <span id="unsaved">0</span></span>
     </div>
   </header>
 
@@ -71,7 +75,7 @@
         <div class="toolbar">
           <input id="q" placeholder="search (title/notes)" />
           <select id="catFilter"><option value="">all categories</option></select>
-          <button id="shuffle">Shuffle ␣</button>
+          <button id="shuffle">Shuffle</button>
         </div>
         <div class="list" id="list"></div>
       </div>
@@ -85,19 +89,15 @@
         <hr style="border:none;border-top:1px solid #191926;margin:10px 0"/>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <input type="file" id="file" accept="application/json" />
-          <button id="importBtn">Import JSON → local</button>
+          <button id="importBtn">Import JSON</button>
           <button id="exportBtn">Export JSON</button>
         </div>
-        <p class="status">Tip: Seed your npoint bin with the exported JSON, then use your bin's Secret as <code>X-Api-Key</code> for writes.</p>
       </div>
     </aside>
 
     <main class="card">
       <div class="toolbar">
-        <button id="prev">◀ Prev</button>
-        <button id="next">Next ▶</button>
-        <button id="pick" class="ok">Morning pick</button>
-        <span class="status">Shortcuts: <span class="kbd">Space</span> shuffle · <span class="kbd">N</span> new · <span class="kbd">⌘/Ctrl+S</span> save</span>
+        <button id="pick" class="ok">Random pick</button>
       </div>
       <div class="main">
         <div class="grid">
@@ -132,10 +132,18 @@
       </div>
       <div class="footer">
         <div>id: <code id="rid">—</code> · <span id="archivedTag" class="tag" style="display:none">archived</span></div>
-        <div><a id="openLink" href="#" target="_blank">open link</a></div>
       </div>
     </main>
   </div>
+
+  <header>
+    <div class="right">
+      <input id="endpoint" size="38" placeholder="npoint endpoint (e.g. https://api.npoint.io/cd1184765c36929f0b34)" />
+      <input id="apikey" size="18" placeholder="X-Api-Key (optional for write)" />
+      <button id="saveCfg" class="pill">Save config</button>
+      <button id="load" class="pill">Load</button>
+    </div>
+  </header>
 
   <script>
   // ---- utilities ----
@@ -162,7 +170,7 @@
     archive: $('#archive'), del: $('#delete'), file: $('#file'), importBtn: $('#importBtn'), exportBtn: $('#exportBtn'),
     rid: $('#rid'), title: $('#title'), category: $('#category'), link: $('#link'), infl: $('#infl'),
     pitch: $('#pitch'), notes: $('#notes'), problem: $('#problem'), money: $('#money'), image: $('#image'),
-    status: $('#status'), count: $('#count'), unsaved: $('#unsaved'), archivedTag: $('#archivedTag'), openLink: $('#openLink'), mode: $('#mode')
+    status: $('#status'), count: $('#count'), unsaved: $('#unsaved'), archivedTag: $('#archivedTag'), mode: $('#mode')
   };
 
   if(els.endpoint){ els.endpoint.value = cfg.endpoint; }
@@ -241,7 +249,6 @@
     if(els.money) els.money.value = it.monetization||'';
     if(els.image) els.image.value = it.image||'';
     if(els.archivedTag) els.archivedTag.style.display = it.archived ? 'inline-block' : 'none';
-    if(els.openLink) els.openLink.href = it.link || '#';
     $$('.row').forEach((n,j)=>{ n.classList.toggle('active', j===idx); if(j===idx && scrollIntoView) n.scrollIntoView({block:'nearest'}); });
   }
 
@@ -307,7 +314,7 @@
       setStatus('saving…');
       const body = JSON.stringify({ ideas: data.ideas }, null, 2);
       const headers = { 'Content-Type':'application/json' };
-      if(cfg.apikey) headers['X-Api-Key'] = cfg.apikey;
+      if(cfg.apikey) headers['Authorization'] = "Bearer " + cfg.apikey;
       const res = await fetch(cfg.endpoint, { method:'POST', headers, body });
       if(!res.ok){ throw new Error('HTTP '+res.status); }
       dirty.clear(); refreshCounts(); setStatus('saved ✓');
@@ -365,9 +372,7 @@
   if(els.catFilter){ els.catFilter.addEventListener('change', ()=>{ idx=0; renderList(); }); }
 
   window.addEventListener('keydown', (e)=>{
-    if(e.code==='Space' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){ e.preventDefault(); shuffle(); }
     if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveData(); }
-    if(!e.metaKey && !e.ctrlKey && e.key.toLowerCase()==='n' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){ e.preventDefault(); newIdea(); }
   });
 
   // initial
