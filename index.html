@@ -326,15 +326,15 @@
 
   async function saveToNpoint(){
     try{
-      setStatus('saving…');
+      setStatus('saving ...');
       const body = JSON.stringify(data);
       const headers = { 'Content-Type':'application/json' };
       if(cfg.apikey) headers['Authorization'] = "Bearer " + cfg.apikey;
       const res = await fetch(cfg.endpoint, { method:'POST', headers, body });
       if(!res.ok){ throw new Error('HTTP '+res.status); }
-      dirty.clear(); refreshCounts(); setStatus('saved ✓');
+      dirty.clear(); refreshCounts(); setStatus('saved!');
       return true;
-    }catch(e){ console.error(e); setStatus('save failed; saved locally');
+    }catch(e){ console.error(e); setStatus('save failed - saved locally');
       return false;
     }
   }
