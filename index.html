@@ -434,8 +434,30 @@
     renderList();
   }
 
-  function shuffle(){ if(!filteredIdxs.length) return; idx = Math.floor(Math.random()*filteredIdxs.length); loadCurrent(); }
+  function randInt(n){
+    if (n <= 0) return 0;
+    const c = (self.crypto || self.msCrypto);
+    if (c && c.getRandomValues) {
+      const buf = new Uint32Array(1);
+      const limit = Math.floor(0x100000000 / n) * n; // unbiased
+      let r;
+      do { c.getRandomValues(buf); r = buf[0]; } while (r >= limit);
+      return r % n;
+    }
+    // fallback if not https/localhost
+    return (Math.random() * n) | 0;
+  }
 
+
+  function shuffle(){
+    if (!filteredIdxs.length) return;
+    idx = randInt(filteredIdxs.length);
+    loadCurrent();
+  }
+
+
+
+  
   // --------- Remote / Local I/O ----------
   async function loadFromNpoint(){
     try{
