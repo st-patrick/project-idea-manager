@@ -70,7 +70,14 @@
     <div class="left">
       <strong>Idea Helper</strong>
       <span class="status" id="status">ready</span>
-      <span class="tag">space: <span id="count">0</span> ideas</span>
+
+      <!-- replace this: <span class="tag">space: <span id="count">0</span> ideas</span> -->
+      <span class="tag">all: <span id="countTotal">0</span></span>
+      <span class="tag">active: <span id="countActive">0</span></span>
+      <span class="tag">archived: <span id="countArchived">0</span></span>
+      <span class="tag">&#10084;&#65039;: <span id="countFav">0</span></span>
+      <span class="tag">mode: <span id="mode">remote</span></span>
+
       <span class="tag">mode: <span id="mode">remote</span></span>
       <a class="tip" href="https://www.paypal.com/paypalme/PatrickReinbold" target="_blank" rel="noopener noreferrer" title="tip jar">&#128151; tip jar</a>
     </div>
@@ -87,7 +94,9 @@
           <input id="q" placeholder="search (title/notes)" />
           <select id="catFilter"><option value="">all categories</option></select>
           <button id="favOnly" class="pill toggle" data-on="false" title="Show favorites only">&#10084;&#65039; favorites</button>
-          <button id="shuffle">Shuffle</button>
+          <button id="showArchived" class="pill toggle" data-on="false" title="Show archived">
+            &#128065;&#8416; archived
+          </button>
         </div>
         <div class="list" id="list"></div>
       </div>
@@ -190,7 +199,10 @@
     rid: $('#rid'), title: $('#title'), category: $('#category'), link: $('#link'), infl: $('#infl'),
     pitch: $('#pitch'), notes: $('#notes'), problem: $('#problem'), money: $('#money'), image: $('#image'),
     status: $('#status'), count: $('#count'), unsaved: $('#unsaved'), archivedTag: $('#archivedTag'), mode: $('#mode'),
-    favBtn: $('#favBtn'), favOnly: $('#favOnly')
+    favBtn: $('#favBtn'), favOnly: $('#favOnly'),
+    showArchived: $('#showArchived'),
+    countTotal: $('#countTotal'), countActive: $('#countActive'),
+    countArchived: $('#countArchived'), countFav: $('#countFav')    
   };
   if(els.endpoint) els.endpoint.value = cfg.endpoint;
   if(els.apikey) els.apikey.value = cfg.apikey;
@@ -298,7 +310,28 @@
   let dirty = new Set();
 
   function setStatus(s){ if(els.status) els.status.textContent = s; }
-  function refreshCounts(){ if(els.count) els.count.textContent = data.ideas.length; if(els.unsaved) els.unsaved.textContent = dirty.size; }
+  function refreshCounts(){
+    const total = data.ideas.length;
+    const archived = data.ideas.filter(it => it.archived).length;
+    const fav = data.ideas.filter(it => it.fav).length;
+    const active = total - archived;
+
+    if(els.countTotal) els.countTotal.textContent = total;
+    if(els.countActive) els.countActive.textContent = active;
+    if(els.countArchived) els.countArchived.textContent = archived;
+    if(els.countFav) els.countFav.textContent = fav;
+    if(els.unsaved) els.unsaved.textContent = dirty.size;
+  }
+
+  function refreshArchivedToggle(){
+    if(!els.showArchived) return;
+    const on = els.showArchived.dataset.on === 'true';
+    // open eye when showing archived, closed/slashed eye when hiding archived
+    els.showArchived.innerHTML = on ? '&#128065; archived' : '&#8416; archived';
+    els.showArchived.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+
+
 
   function renderList(){
     const q = (els.q && els.q.value || '').toLowerCase().trim();
@@ -321,6 +354,7 @@
     }
 
     data.ideas.forEach((it, i) => {
+      if(!showArchived && it.archived) return; 
       if(cat && it.category !== cat) return;
       if(favOnly && !it.fav) return;
       if(q && !(`${it.title} ${it.notes||''}`.toLowerCase().includes(q))) return;
@@ -524,7 +558,6 @@
   if(els.saveCfg){ els.saveCfg.onclick = ()=>{ cfg.endpoint = els.endpoint ? els.endpoint.value.trim() : cfg.endpoint; cfg.apikey = els.apikey ? els.apikey.value.trim() : cfg.apikey; try{ localStorage.setItem('ih.endpoint', cfg.endpoint); localStorage.setItem('ih.apikey', cfg.apikey);}catch(e){} setStatus('config saved'); }; }
   if(els.load){ els.load.onclick = loadData; }
   if(els.save){ els.save.onclick = saveData; }
-  if(els.shuffle){ els.shuffle.onclick = shuffle; }
   if(els.pick){ els.pick.onclick = shuffle; }
   if(els.newBtn){ els.newBtn.onclick = newIdea; }
   if(els.dup){ els.dup.onclick = duplicateIdea; }
@@ -534,6 +567,16 @@
   if(els.importBtn){ els.importBtn.onclick = ()=>{ if(els.file && els.file.files[0]) importJSON(els.file.files[0]); else alert('Choose a JSON file to import first.'); }; }
   if(els.favBtn){ els.favBtn.onclick = toggleFav; }
   if(els.favOnly){ els.favOnly.onclick = toggleFavOnly; }
+  if(els.showArchived){
+    els.showArchived.onclick = () => {
+      els.showArchived.dataset.on = (els.showArchived.dataset.on === 'true') ? 'false' : 'true';
+      refreshArchivedToggle();
+      renderList();
+    };
+    // set correct icon on load
+    refreshArchivedToggle();
+  }
+  
 
   // live updates
   ['title','category','link','infl','pitch','notes','problem','money','image'].forEach(k=>{
