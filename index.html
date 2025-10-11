@@ -381,6 +381,7 @@
   let idx = -1;
   let filteredIdxs = [];
   let dirty = new Set();
+  let recentPicks = new Set(); // Track recent random picks to avoid repetition
 
   function setStatus(s){ if(els.status) els.status.textContent = s; }
   function refreshCounts(){
@@ -426,6 +427,9 @@
       els.catFilter.value = prevSel;
     }
 
+    // Check if archived items should be shown
+    const showArchived = els.showArchived ? (els.showArchived.dataset.on === 'true') : false;
+    
     data.ideas.forEach((it, i) => {
       if(!showArchived && it.archived) return; 
       if(cat && it.category !== cat) return;
@@ -442,6 +446,11 @@
     if(els.list){ els.list.replaceChildren(...nodes); }
     if(idx < 0 && filteredIdxs.length){ idx = 0; }
     if(filteredIdxs.length && idx >= filteredIdxs.length){ idx = filteredIdxs.length-1; }
+    
+    // Clear recent picks when the filtered list changes significantly
+    // This prevents stale indices from affecting the random selection
+    recentPicks.clear();
+    
     loadCurrent(false);
   }
 
@@ -555,10 +564,78 @@
     return (Math.random() * n) | 0;
   }
 
+  function getWeightedRandomIndex(availableIndices) {
+    // Create a weighted list where items not recently picked have higher weight
+    const weights = availableIndices.map(i => {
+      const realIndex = filteredIdxs[i];
+      const idea = data.ideas[realIndex];
+      
+      // Base weight of 1, higher for favorites, lower for recently picked
+      let weight = 1;
+      if (idea.fav) weight += 2; // Favorites get higher chance
+      if (recentPicks.has(i)) weight = Math.max(0.1, weight * 0.2); // Recently picked get much lower chance
+      
+      return weight;
+    });
+    
+    // Calculate total weight
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+    if (totalWeight === 0) return availableIndices[randInt(availableIndices.length)];
+    
+    // Pick a random number between 0 and totalWeight
+    const target = Math.random() * totalWeight;
+    
+    // Find the corresponding index
+    let currentWeight = 0;
+    for (let i = 0; i < availableIndices.length; i++) {
+      currentWeight += weights[i];
+      if (currentWeight >= target) {
+        return availableIndices[i];
+      }
+    }
+    
+    // Fallback
+    return availableIndices[availableIndices.length - 1];
+  }
 
   function shuffle(){
     if (!filteredIdxs.length) return;
-    idx = randInt(filteredIdxs.length);
+    
+    // Get available indices (exclude archived if not shown)
+    const showArchived = els.showArchived ? (els.showArchived.dataset.on === 'true') : false;
+    const availableIndices = [];
+    
+    for (let i = 0; i < filteredIdxs.length; i++) {
+      const realIndex = filteredIdxs[i];
+      const idea = data.ideas[realIndex];
+      if (showArchived || !idea.archived) {
+        availableIndices.push(i);
+      }
+    }
+    
+    if (!availableIndices.length) return;
+    
+    // If we have many options, use weighted random, otherwise use simple random
+    let newIdx;
+    if (availableIndices.length >= 3) {
+      newIdx = getWeightedRandomIndex(availableIndices);
+    } else {
+      newIdx = availableIndices[randInt(availableIndices.length)];
+    }
+    
+    // Track this pick to avoid repetition
+    recentPicks.add(newIdx);
+    
+    // Limit recent picks to avoid memory bloat and ensure we don't exclude too many
+    const maxRecentPicks = Math.min(Math.floor(availableIndices.length / 3), 10);
+    if (recentPicks.size > maxRecentPicks) {
+      const recentArray = Array.from(recentPicks);
+      recentPicks.clear();
+      // Keep only the most recent picks
+      recentArray.slice(-maxRecentPicks).forEach(i => recentPicks.add(i));
+    }
+    
+    idx = newIdx;
     loadCurrent();
   }
 
