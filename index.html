@@ -570,9 +570,8 @@
       const realIndex = filteredIdxs[i];
       const idea = data.ideas[realIndex];
       
-      // Base weight of 1, higher for favorites, lower for recently picked
+      // Base weight of 1, lower for recently picked
       let weight = 1;
-      if (idea.fav) weight += 2; // Favorites get higher chance
       if (recentPicks.has(i)) weight = Math.max(0.1, weight * 0.2); // Recently picked get much lower chance
       
       return weight;
@@ -601,15 +600,30 @@
   function shuffle(){
     if (!filteredIdxs.length) return;
     
-    // Get available indices (exclude archived if not shown)
+    // Check current filter states
     const showArchived = els.showArchived ? (els.showArchived.dataset.on === 'true') : false;
+    const favOnly = els.favOnly ? (els.favOnly.dataset.on === 'true') : false;
     const availableIndices = [];
     
     for (let i = 0; i < filteredIdxs.length; i++) {
       const realIndex = filteredIdxs[i];
       const idea = data.ideas[realIndex];
-      if (showArchived || !idea.archived) {
-        availableIndices.push(i);
+      
+      // Skip archived if not shown
+      if (!showArchived && idea.archived) continue;
+      
+      // When favorites filter is active, pick from favorites
+      // When favorites filter is NOT active, pick only NON-favorites
+      if (favOnly) {
+        // Favorites filter is active - only pick favorites
+        if (idea.fav) {
+          availableIndices.push(i);
+        }
+      } else {
+        // Favorites filter is NOT active - only pick NON-favorites
+        if (!idea.fav) {
+          availableIndices.push(i);
+        }
       }
     }
     
