@@ -428,7 +428,8 @@
     }
 
     // Check if archived items should be shown
-    const showArchived = els.showArchived ? (els.showArchived.dataset.on === 'true') : false;
+    // Special rule: if a category is selected, show all items including archived
+    const showArchived = cat ? true : (els.showArchived ? (els.showArchived.dataset.on === 'true') : false);
     
     data.ideas.forEach((it, i) => {
       if(!showArchived && it.archived) return; 
@@ -601,7 +602,8 @@
     if (!filteredIdxs.length) return;
     
     // Check current filter states
-    const showArchived = els.showArchived ? (els.showArchived.dataset.on === 'true') : false;
+    const cat = els.catFilter ? els.catFilter.value : '';
+    const showArchived = cat ? true : (els.showArchived ? (els.showArchived.dataset.on === 'true') : false);
     const favOnly = els.favOnly ? (els.favOnly.dataset.on === 'true') : false;
     const availableIndices = [];
     
@@ -609,20 +611,25 @@
       const realIndex = filteredIdxs[i];
       const idea = data.ideas[realIndex];
       
-      // Skip archived if not shown
+      // Skip archived if not shown (unless category is selected)
       if (!showArchived && idea.archived) continue;
       
-      // When favorites filter is active, pick from favorites
-      // When favorites filter is NOT active, pick only NON-favorites
-      if (favOnly) {
-        // Favorites filter is active - only pick favorites
-        if (idea.fav) {
-          availableIndices.push(i);
-        }
+      // Special rule: when category is selected, pick from ALL items in that category
+      if (cat) {
+        // Category is selected - pick from all items in the filtered list
+        availableIndices.push(i);
       } else {
-        // Favorites filter is NOT active - only pick NON-favorites
-        if (!idea.fav) {
-          availableIndices.push(i);
+        // No category selected - apply favorites filter logic
+        if (favOnly) {
+          // Favorites filter is active - only pick favorites
+          if (idea.fav) {
+            availableIndices.push(i);
+          }
+        } else {
+          // Favorites filter is NOT active - only pick NON-favorites
+          if (!idea.fav) {
+            availableIndices.push(i);
+          }
         }
       }
     }
