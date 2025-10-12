@@ -751,6 +751,28 @@
 
   window.addEventListener('keydown', (e)=>{
     if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveData(); }
+    
+    // Arrow key navigation
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      // Don't interfere if user is typing in an input/textarea
+      if(document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT')) {
+        return;
+      }
+      
+      e.preventDefault();
+      
+      if(!filteredIdxs.length) return;
+      
+      if(e.key === 'ArrowDown') {
+        // Move to next item
+        idx = (idx + 1) % filteredIdxs.length;
+      } else {
+        // Move to previous item
+        idx = idx <= 0 ? filteredIdxs.length - 1 : idx - 1;
+      }
+      
+      loadCurrent(true);
+    }
   });
 
   // initial
