@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
   <link rel="icon" type="image/x-icon" href="logo.png">
   <link rel="manifest" href="/app.webmanifest">
 
@@ -122,6 +123,7 @@
     .row:hover { background: var(--hover); }
     .row.active { background: var(--accent); color: var(--bg); }
     .row.active .row-cat { color: var(--bg); opacity: 0.7; }
+    .row.active .row-fav { filter: brightness(2); }
     .row-content { flex: 1; min-width: 0; }
     .row-title { 
       font-weight: 500; 
@@ -181,13 +183,63 @@
       padding: 24px;
     }
     .content-inner {
-      max-width: 640px;
-      margin: 0 auto;
+      max-width: 100%;
     }
 
-    /* Form */
-    .field { margin-bottom: 20px; }
-    .field-label {
+    /* Document view */
+    .idea-doc {
+      line-height: 1.7;
+    }
+    .idea-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      outline: none;
+      border-radius: 4px;
+      padding: 2px 4px;
+      margin: -2px -4px;
+      transition: background 0.15s;
+    }
+    .idea-title:hover {
+      background: var(--hover);
+    }
+    .idea-title:focus {
+      background: var(--card);
+    }
+    .idea-title:empty::before {
+      content: 'Untitled idea';
+      color: var(--muted);
+    }
+
+    .idea-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 24px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .idea-category {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      border-radius: 999px;
+      outline: none;
+      transition: all 0.15s;
+    }
+    .idea-category:hover {
+      border-color: var(--muted);
+    }
+    .idea-category:focus {
+      border-color: var(--accent);
+      background: var(--bg);
+    }
+    .idea-category:empty::before {
+      content: '+ category';
+      color: var(--muted);
+    }
+
+    .idea-section-label {
       font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
@@ -195,33 +247,62 @@
       color: var(--muted);
       margin-bottom: 6px;
     }
-    .field input, .field textarea {
-      width: 100%;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 14px;
-      color: var(--fg);
-      font: inherit;
-      font-size: 14px;
+    .idea-text {
       outline: none;
-      transition: border-color 0.15s;
-      resize: vertical;
+      border-radius: 4px;
+      padding: 4px 6px;
+      margin: -4px -6px;
+      transition: background 0.15s;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
-    .field input:focus, .field textarea:focus {
-      border-color: var(--accent);
+    .idea-text:hover {
+      background: var(--hover);
     }
-    .field input::placeholder, .field textarea::placeholder {
+    .idea-text:focus {
+      background: var(--card);
+    }
+    .idea-text:empty::before {
+      content: attr(data-placeholder);
       color: var(--muted);
+      font-style: italic;
     }
-    .title-input {
-      font-size: 24px !important;
-      font-weight: 600 !important;
-      border: none !important;
-      background: transparent !important;
-      padding: 0 !important;
+
+    /* Two column grid layout on desktop */
+    .idea-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
     }
-    .title-input:focus { outline: none; }
+    @media (min-width: 800px) {
+      .idea-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+      .idea-grid .idea-section.full {
+        grid-column: 1 / -1;
+      }
+    }
+
+    /* Section header with remove */
+    .idea-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .section-remove {
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+    .idea-section:hover .section-remove {
+      opacity: 1;
+    }
+    .section-remove:hover {
+      color: var(--bad);
+    }
 
     .add-field-btn {
       display: inline-flex;
@@ -393,6 +474,45 @@
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
 
+    /* Custom field modal */
+    .modal-input {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      color: var(--fg);
+      font: inherit;
+      font-size: 14px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    .modal-input:focus {
+      border-color: var(--accent);
+    }
+    .modal-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .modal-btn {
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--fg);
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .modal-btn:hover {
+      background: var(--hover);
+    }
+    .modal-btn.primary {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+
     /* Hidden */
     .hidden { display: none !important; }
 
@@ -482,64 +602,70 @@
       </div>
 
       <div class="content">
-        <div class="content-inner" id="formContent">
-          <div class="field">
-            <input type="text" class="title-input" id="title" placeholder="Untitled idea" />
+        <div class="content-inner idea-doc" id="formContent">
+          
+          <div contenteditable="true" class="idea-title" id="title"></div>
+          
+          <div class="idea-meta">
+            <span contenteditable="true" class="idea-category" id="category"></span>
+            <span id="archivedTag" class="archive-badge hidden">Archived</span>
           </div>
 
-          <div class="field">
-            <div class="field-label">Category</div>
-            <input type="text" id="category" placeholder="app / game / product / ..." />
+          <div class="idea-grid">
+            
+            <div class="idea-section" id="fieldNotes">
+              <div class="idea-section-label">Notes</div>
+              <div contenteditable="true" class="idea-text" id="notes" data-placeholder="Click to add notes..."></div>
+            </div>
+
+            <div class="idea-section hidden" id="fieldPitch">
+              <div class="idea-section-label">Elevator Pitch</div>
+              <div contenteditable="true" class="idea-text" id="pitch" data-placeholder="One or two sentences that captures the hook..."></div>
+            </div>
+
+            <div class="idea-section hidden" id="fieldProblem">
+              <div class="idea-section-label">Problem</div>
+              <div contenteditable="true" class="idea-text" id="problem" data-placeholder="What pain does it remove?"></div>
+            </div>
+
+            <div class="idea-section hidden" id="fieldMoney">
+              <div class="idea-section-label">Monetization</div>
+              <div contenteditable="true" class="idea-text" id="money" data-placeholder="How does it make money?"></div>
+            </div>
+
+            <div class="idea-section hidden" id="fieldInfl">
+              <div class="idea-section-label">Inflection Point</div>
+              <div contenteditable="true" class="idea-text" id="infl" data-placeholder="What makes it pop?"></div>
+            </div>
+
+            <div class="idea-section hidden" id="fieldLink">
+              <div class="idea-section-label">Link</div>
+              <div contenteditable="true" class="idea-text" id="link" data-placeholder="https://..."></div>
+            </div>
+
+            <div class="idea-section hidden" id="fieldImage">
+              <div class="idea-section-label">Image</div>
+              <div contenteditable="true" class="idea-text" id="image" data-placeholder="https://..."></div>
+            </div>
+
+            <div id="customFieldsContainer" style="display: contents;"></div>
+
           </div>
 
-          <div class="field" id="fieldNotes">
-            <div class="field-label">Notes</div>
-            <textarea id="notes" rows="4" placeholder="Freeform notes..."></textarea>
-          </div>
-
-          <div class="field hidden" id="fieldPitch">
-            <div class="field-label">Elevator Pitch</div>
-            <textarea id="pitch" rows="3" placeholder="One or two sentences that captures the hook..."></textarea>
-          </div>
-
-          <div class="field hidden" id="fieldProblem">
-            <div class="field-label">Problem</div>
-            <textarea id="problem" rows="3" placeholder="What pain does it remove?"></textarea>
-          </div>
-
-          <div class="field hidden" id="fieldMoney">
-            <div class="field-label">Monetization</div>
-            <textarea id="money" rows="3" placeholder="How does it make money?"></textarea>
-          </div>
-
-          <div class="field hidden" id="fieldInfl">
-            <div class="field-label">Inflection Point</div>
-            <input type="text" id="infl" placeholder="What makes it pop?" />
-          </div>
-
-          <div class="field hidden" id="fieldLink">
-            <div class="field-label">Link</div>
-            <input type="text" id="link" placeholder="https://..." />
-          </div>
-
-          <div class="field hidden" id="fieldImage">
-            <div class="field-label">Image URL</div>
-            <input type="text" id="image" placeholder="https://..." />
-          </div>
-
-          <div style="position: relative; display: inline-block;">
-            <button class="add-field-btn" id="addFieldBtn">+ Add field</button>
+          <div style="position: relative; display: inline-block; margin-top: 8px;">
+            <button class="add-field-btn" id="addFieldBtn">+ Add section</button>
             <div class="field-picker" id="fieldPicker">
               <div class="field-picker-item" data-field="pitch">Elevator Pitch</div>
               <div class="field-picker-item" data-field="problem">Problem</div>
               <div class="field-picker-item" data-field="money">Monetization</div>
               <div class="field-picker-item" data-field="infl">Inflection Point</div>
               <div class="field-picker-item" data-field="link">Link</div>
-              <div class="field-picker-item" data-field="image">Image URL</div>
+              <div class="field-picker-item" data-field="image">Image</div>
+              <div class="menu-divider"></div>
+              <div class="field-picker-item" data-field="custom">+ Custom section...</div>
             </div>
           </div>
 
-          <div id="archivedTag" class="archive-badge hidden" style="margin-top: 20px;">Archived</div>
         </div>
       </div>
     </main>
@@ -575,6 +701,18 @@
 
   <!-- Hidden file input -->
   <input type="file" id="fileInput" accept="application/json" style="display: none;" />
+
+  <!-- Custom Field Modal -->
+  <div class="palette-overlay" id="customFieldOverlay">
+    <div class="palette" style="padding: 20px; max-width: 400px;">
+      <h3 style="margin-bottom: 16px;">Add Custom Field</h3>
+      <input type="text" class="modal-input" id="customFieldName" placeholder="Field name (e.g., Target Audience)" />
+      <div class="modal-buttons">
+        <button class="modal-btn" id="cancelCustomField">Cancel</button>
+        <button class="modal-btn primary" id="addCustomField">Add Field</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Toast -->
   <div class="toast" id="toast"></div>
@@ -635,8 +773,16 @@
     endpoint: $('#endpoint'),
     apikey: $('#apikey'),
     fileInput: $('#fileInput'),
-    sidebar: $('#sidebar')
+    sidebar: $('#sidebar'),
+    customFieldOverlay: $('#customFieldOverlay'),
+    customFieldName: $('#customFieldName'),
+    customFieldsContainer: $('#customFieldsContainer'),
+    formGrid: $('#formGrid')
   };
+
+  // Helper to get/set contenteditable text
+  function getText(el) { return el ? el.textContent || '' : ''; }
+  function setText(el, val) { if(el) el.textContent = val || ''; }
 
   // Load config into settings
   if(els.endpoint) els.endpoint.value = cfg.endpoint;
@@ -670,7 +816,8 @@
         updatedAt: raw.ua || nowSec(),
         archived: !!raw.a,
         score: Number.isFinite(raw.s) ? raw.s : 0,
-        fav: !!raw.f
+        fav: !!raw.f,
+        customFields: raw.cf || {}
       };
     }
     return {
@@ -688,7 +835,8 @@
       updatedAt: raw.updatedAt || nowSec(),
       archived: !!raw.archived,
       score: Number.isFinite(raw.score) ? raw.score : 0,
-      fav: !!raw.fav
+      fav: !!raw.fav,
+      customFields: raw.customFields || raw.cf || {}
     };
   }
 
@@ -708,11 +856,13 @@
       updatedAt: nowSec(),
       archived: !!p.archived,
       score: Number.isFinite(p.score) ? p.score : 0,
-      fav: !!p.fav
+      fav: !!p.fav,
+      customFields: p.customFields || {}
     };
   }
 
   function toCompact(it) {
+    const cf = it.customFields && Object.keys(it.customFields).length ? it.customFields : undefined;
     const o = {
       id: it.id,
       t: (it.title ?? '').trim() || undefined,
@@ -728,7 +878,8 @@
       ua: nowSec(),
       a: it.archived ? 1 : undefined,
       s: it.score || undefined,
-      f: it.fav ? 1 : undefined
+      f: it.fav ? 1 : undefined,
+      cf: cf
     };
     Object.keys(o).forEach(k => { if(o[k] === undefined || o[k] === '') delete o[k]; });
     return o;
@@ -788,7 +939,9 @@
   function updateFieldPickerState() {
     $$('.field-picker-item').forEach(item => {
       const f = item.dataset.field;
+      if(f === 'custom') return; // Skip custom field option
       const cfg = fieldMap[f];
+      if(!cfg) return; // Skip if not in fieldMap
       const el = $(`#${cfg.el}`);
       const isVisible = el && !el.classList.contains('hidden');
       item.classList.toggle('disabled', isVisible);
@@ -859,21 +1012,22 @@
     const realIndex = filteredIdxs[idx];
     const it = data.ideas[realIndex];
 
-    els.title.value = it.title || '';
-    els.category.value = it.category || '';
-    els.notes.value = it.notes || '';
-    els.pitch.value = it.pitch || '';
-    els.problem.value = it.problem || '';
-    els.money.value = it.monetization || '';
-    els.infl.value = it.inflection_point || '';
-    els.link.value = it.link || '';
-    els.image.value = it.image || '';
+    setText(els.title, it.title || '');
+    setText(els.category, it.category || '');
+    setText(els.notes, it.notes || '');
+    setText(els.pitch, it.pitch || '');
+    setText(els.problem, it.problem || '');
+    setText(els.money, it.monetization || '');
+    setText(els.infl, it.inflection_point || '');
+    setText(els.link, it.link || '');
+    setText(els.image, it.image || '');
 
     if(els.archivedTag) els.archivedTag.classList.toggle('hidden', !it.archived);
     if(els.favBtn) els.favBtn.classList.toggle('active', it.fav);
     if(els.favBtn) els.favBtn.textContent = it.fav ? '❤️' : '♡';
 
     updateFieldVisibility(it);
+    renderCustomFields(it.customFields || {});
 
     $$('.row').forEach((n, j) => {
       n.classList.toggle('active', j === idx);
@@ -881,9 +1035,48 @@
     });
   }
 
+  function renderCustomFields(customFields) {
+    if(!els.customFieldsContainer) return;
+    els.customFieldsContainer.innerHTML = '';
+    
+    Object.entries(customFields).forEach(([key, value]) => {
+      const section = document.createElement('div');
+      section.className = 'idea-section';
+      section.dataset.customKey = key;
+      section.innerHTML = `
+        <div class="idea-section-header">
+          <div class="idea-section-label">${escapeHtml(key)}</div>
+          <span class="section-remove" data-key="${escapeHtml(key)}">✕ remove</span>
+        </div>
+        <div contenteditable="true" class="idea-text" data-custom-field="${escapeHtml(key)}" data-placeholder="Click to add ${escapeHtml(key)}...">${escapeHtml(value || '')}</div>
+      `;
+      els.customFieldsContainer.appendChild(section);
+      
+      // Bind input event
+      const input = section.querySelector('[contenteditable]');
+      input.addEventListener('input', updateCurrent);
+      
+      // Bind remove button
+      const removeBtn = section.querySelector('.section-remove');
+      removeBtn.addEventListener('click', () => removeCustomField(key));
+    });
+  }
+
+  function removeCustomField(key) {
+    if(idx < 0) return;
+    const realIndex = filteredIdxs[idx];
+    const it = data.ideas[realIndex];
+    if(it.customFields) {
+      delete it.customFields[key];
+      dirty.add(it.id);
+      refreshCounts();
+      renderCustomFields(it.customFields);
+    }
+  }
+
   function clearForm() {
     ['title', 'category', 'notes', 'pitch', 'problem', 'money', 'infl', 'link', 'image'].forEach(k => {
-      if(els[k]) els[k].value = '';
+      if(els[k]) setText(els[k], '');
     });
     if(els.archivedTag) els.archivedTag.classList.add('hidden');
     if(els.favBtn) { els.favBtn.classList.remove('active'); els.favBtn.textContent = '♡'; }
@@ -891,25 +1084,39 @@
       const el = $(`#${fieldMap[f].el}`);
       if(el) el.classList.add('hidden');
     });
+    if(els.customFieldsContainer) els.customFieldsContainer.innerHTML = '';
   }
 
   function readForm() {
     const base = filteredIdxs[idx] != null ? data.ideas[filteredIdxs[idx]] || {} : {};
+    
+    // Read custom fields from DOM
+    const customFields = { ...(base.customFields || {}) };
+    $$('[data-custom-field]').forEach(el => {
+      const key = el.dataset.customField;
+      customFields[key] = getText(el);
+    });
+    // Remove empty custom fields
+    Object.keys(customFields).forEach(k => {
+      if(!customFields[k]?.trim()) delete customFields[k];
+    });
+    
     return normalizeIdea({
       id: base.id,
-      title: els.title?.value || '',
-      category: els.category?.value || '',
-      notes: els.notes?.value || '',
-      pitch: els.pitch?.value || '',
-      problem: els.problem?.value || '',
-      monetization: els.money?.value || '',
-      inflection_point: els.infl?.value || '',
-      link: els.link?.value || '',
-      image: els.image?.value || '',
+      title: getText(els.title),
+      category: getText(els.category),
+      notes: getText(els.notes),
+      pitch: getText(els.pitch),
+      problem: getText(els.problem),
+      monetization: getText(els.money),
+      inflection_point: getText(els.infl),
+      link: getText(els.link),
+      image: getText(els.image),
       archived: base.archived || false,
       createdAt: base.createdAt,
       score: base.score || 0,
-      fav: base.fav || false
+      fav: base.fav || false,
+      customFields
     });
   }
 
@@ -1176,10 +1383,55 @@
   });
   $$('.field-picker-item').forEach(item => {
     item.onclick = () => {
-      showField(item.dataset.field);
+      const field = item.dataset.field;
       els.fieldPicker.classList.remove('open');
+      if(field === 'custom') {
+        openCustomFieldModal();
+      } else {
+        showField(field);
+      }
     };
   });
+
+  function openCustomFieldModal() {
+    els.customFieldOverlay.classList.add('open');
+    els.customFieldName.value = '';
+    els.customFieldName.focus();
+  }
+
+  function closeCustomFieldModal() {
+    els.customFieldOverlay.classList.remove('open');
+  }
+
+  function addCustomField() {
+    const name = els.customFieldName.value.trim();
+    if(!name) { showToast('Enter a field name'); return; }
+    if(idx < 0) { showToast('Select an idea first'); return; }
+    
+    const realIndex = filteredIdxs[idx];
+    const it = data.ideas[realIndex];
+    if(!it.customFields) it.customFields = {};
+    it.customFields[name] = '';
+    dirty.add(it.id);
+    refreshCounts();
+    renderCustomFields(it.customFields);
+    closeCustomFieldModal();
+    showToast(`Added "${name}" field`);
+    
+    // Focus the new field
+    setTimeout(() => {
+      const newField = $(`[data-custom-field="${name}"]`);
+      if(newField) newField.focus();
+    }, 50);
+  }
+
+  $('#addCustomField').onclick = addCustomField;
+  $('#cancelCustomField').onclick = closeCustomFieldModal;
+  els.customFieldOverlay.onclick = e => { if(e.target === els.customFieldOverlay) closeCustomFieldModal(); };
+  els.customFieldName.onkeydown = e => {
+    if(e.key === 'Enter') { e.preventDefault(); addCustomField(); }
+    if(e.key === 'Escape') closeCustomFieldModal();
+  };
 
   // Menu actions
   $('#menuNew').onclick = () => { els.mainMenu.classList.remove('open'); newIdea(); };
